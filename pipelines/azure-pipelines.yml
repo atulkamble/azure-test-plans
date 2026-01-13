@@ -1,0 +1,110 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: Build
+    displayName: 'Build and Test Stage'
+    jobs:
+      - job: BuildApp
+        displayName: 'Build Application'
+        steps:
+          - task: CopyFiles@2
+            displayName: 'Copy Application Files'
+            inputs:
+              SourceFolder: '$(Build.SourcesDirectory)/app'
+              Contents: '**'
+              TargetFolder: '$(Build.ArtifactStagingDirectory)/app'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish App Artifact'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/app'
+              ArtifactName: 'web-app'
+              publishLocation: 'Container'
+
+  - stage: Test
+    displayName: 'Automated Testing Stage'
+    dependsOn: Build
+    jobs:
+      - job: SeleniumTests
+        displayName: 'Run Selenium Tests'
+        steps:
+          - task: UsePythonVersion@0
+            displayName: 'Use Python 3.11'
+            inputs:
+              versionSpec: '3.11'
+              addToPath: true
+
+          - script: |
+              python -m pip install --upgrade pip
+              pip install -r test-automation/requirements.txt
+            displayName: 'Install Python Dependencies'
+
+          - task: DownloadBuildArtifacts@1
+            displayName: 'Download App Artifact'
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'web-app'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - script: |
+              # Install Chrome and ChromeDriver
+              wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+              sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+              sudo apt-get update
+              sudo apt-get install -y google-chrome-stable
+              
+              # Start simple HTTP server for testing
+              cd $(System.ArtifactsDirectory)/web-app
+              python -m http.server 8080 &
+              sleep 5
+            displayName: 'Setup Test Environment'
+
+          - script: |
+              cd test-automation
+              python selenium-login-test.py http://localhost:8080
+            displayName: 'Run Selenium Tests'
+            continueOnError: true
+
+          - task: PublishTestResults@2
+            displayName: 'Publish Test Results'
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '**/TEST-*.xml'
+              testRunTitle: 'Selenium UI Tests'
+              failTaskOnFailedTests: true
+            condition: succeededOrFailed()
+
+  - stage: Deploy
+    displayName: 'Deploy to Test Environment'
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - deployment: DeployWeb
+        displayName: 'Deploy Web Application'
+        environment: 'test'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  displayName: 'Download App Artifact'
+                  inputs:
+                    buildType: 'current'
+                    downloadType: 'single'
+                    artifactName: 'web-app'
+                    downloadPath: '$(System.ArtifactsDirectory)'
+
+                - script: |
+                    echo "Deploying application to test environment..."
+                    echo "Application ready at: $(System.ArtifactsDirectory)/web-app"
+                  displayName: 'Deploy Application'
+
+                - script: |
+                    echo "Deployment completed successfully"
+                    echo "Run manual tests in Azure Test Plans"
+                  displayName: 'Post-Deployment Steps'
