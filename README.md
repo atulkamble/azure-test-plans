@@ -72,3 +72,58 @@ Azure Test Plans is a **test management service inside Azure DevOps** that helps
 * Teams already on **Azure DevOps**
 
 ---
+## ✅ 1️⃣ BASIC **MANUAL TEST CASE** (as written in Azure Test Plan)
+
+```
+Test Case: Open Google Homepage
+
+Step 1: Open browser
+Expected: Browser opens successfully
+
+Step 2: Go to https://www.google.com
+Expected: Google homepage is displayed
+```
+
+That’s it. ✔️
+(This is exactly how beginners start in Azure Test Plans.)
+
+---
+
+## ✅ 2️⃣ BASIC **AUTOMATION CODE** (Python + Selenium)
+
+```python
+from selenium import webdriver
+
+driver = webdriver.Chrome()
+driver.get("https://www.google.com")
+
+print("Google opened successfully")
+
+driver.quit()
+```
+
+👉 This script:
+
+* Opens Chrome
+* Opens Google
+* Closes browser
+
+---
+
+## ✅ 3️⃣ **PASS / FAIL LOGIC**
+
+```python
+from selenium import webdriver
+
+driver = webdriver.Chrome()
+driver.get("https://www.google.com")
+
+if "Google" in driver.title:
+    print("TEST PASSED")
+else:
+    print("TEST FAILED")
+
+driver.quit()
+```
+
+---
