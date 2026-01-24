@@ -76,7 +76,8 @@ Azure Test Plans is a **test management service inside Azure DevOps** that helps
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/Azure-Test-Plans.git
+
+git clone https://github.com/atulkamble/Azure-Test-Plans.git
 cd Azure-Test-Plans
 
 # Install dependencies
