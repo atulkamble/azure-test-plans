@@ -127,3 +127,91 @@ driver.quit()
 ```
 
 ---
+Below is a **Azure Pipeline** that runs the **same test** and publishes results so you can see them in **Test Plans → Runs → Progress Report**.
+
+---
+
+## 🔹 Azure Pipeline 
+
+### 📄 `azure-pipelines.yml`
+
+```yaml
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- script: |
+    pip install selenium pytest
+  displayName: Install dependencies
+
+- script: |
+    echo "from selenium import webdriver" > test_google.py
+    echo "def test_google():" >> test_google.py
+    echo "    driver = webdriver.Chrome()" >> test_google.py
+    echo "    driver.get('https://www.google.com')" >> test_google.py
+    echo "    assert 'Google' in driver.title" >> test_google.py
+    echo "    driver.quit()" >> test_google.py
+  displayName: Create test
+
+- script: |
+    pytest test_google.py --junitxml=results.xml
+  displayName: Run test
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFiles: results.xml
+    testRunTitle: Basic Google Test
+```
+
+---
+
+## 🔹 How this shows in **Azure Test Plans**
+
+### ✅ Test Plans
+
+* Create **Test Plan**
+* Add **Test Case** (manual)
+* Link this pipeline to the test case (optional but recommended)
+
+---
+
+### 📊 Runs
+
+After pipeline runs:
+
+* Go to **Azure DevOps → Test Plans → Runs**
+* You will see:
+
+  * **Run Name:** `Basic Google Test`
+  * Status: **Passed / Failed**
+  * Execution time
+
+---
+
+### 📈 Progress Report
+
+* Go to **Test Plans → Progress Report**
+* You’ll see:
+
+  * Total tests
+  * Passed / Failed count
+  * Execution trend from pipeline runs
+
+---
+
+## 🔹 Flow (ONE LINE)
+
+```
+Azure Pipeline → Run Test → Publish Results → Test Plans → Runs → Progress Report
+```
+
+---
+
+## 🔹 Interview-friendly explanation (VERY SHORT)
+
+> Azure Pipeline executes automated tests and publishes results, which are tracked in Azure Test Plans under Runs and Progress Reports.
+
+---
