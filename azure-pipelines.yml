@@ -10,12 +10,30 @@ steps:
   displayName: Install dependencies
 
 - script: |
-    echo "from selenium import webdriver" > test_google.py
-    echo "def test_google():" >> test_google.py
-    echo "    driver = webdriver.Chrome()" >> test_google.py
-    echo "    driver.get('https://www.google.com')" >> test_google.py
-    echo "    assert 'Google' in driver.title" >> test_google.py
-    echo "    driver.quit()" >> test_google.py
+    sudo apt-get update
+    sudo apt-get install -y chromium-browser chromium-chromedriver
+  displayName: Install Chrome and ChromeDriver
+
+- script: |
+    cat > test_google.py << 'EOF'
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    
+    def test_google():
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--disable-gpu')
+        
+        service = Service('/usr/bin/chromedriver')
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+        driver.get('https://www.google.com')
+        assert 'Google' in driver.title
+        driver.quit()
+    EOF
   displayName: Create test
 
 - script: |
