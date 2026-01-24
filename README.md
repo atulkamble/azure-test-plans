@@ -73,10 +73,13 @@ Azure Test Plans is a **test management service inside Azure DevOps** that helps
 - Basic understanding of pytest and Selenium
 
 ### Local Development Setup
-
-```bash
+## prerequisites
+```
 pip install -U selenium
-
+pip show selenium
+google-chrome --version
+```
+```bash
 # Clone the repository
 
 git clone https://github.com/atulkamble/Azure-Test-Plans.git
