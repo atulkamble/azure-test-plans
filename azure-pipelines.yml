@@ -1,0 +1,28 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- script: |
+    pip install selenium pytest
+  displayName: Install dependencies
+
+- script: |
+    echo "from selenium import webdriver" > test_google.py
+    echo "def test_google():" >> test_google.py
+    echo "    driver = webdriver.Chrome()" >> test_google.py
+    echo "    driver.get('https://www.google.com')" >> test_google.py
+    echo "    assert 'Google' in driver.title" >> test_google.py
+    echo "    driver.quit()" >> test_google.py
+  displayName: Create test
+
+- script: |
+    pytest test_google.py --junitxml=results.xml
+  displayName: Run test
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFiles: results.xml
+    testRunTitle: Basic Google Test
