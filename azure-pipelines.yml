@@ -4,9 +4,18 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
+variables:
+  testRunTitle: 'Selenium Tests - Build $(Build.BuildNumber)'
+  pythonVersion: '3.12'
+
 steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(pythonVersion)'
+  displayName: 'Use Python $(pythonVersion)'
+
 - script: |
-    pip install selenium pytest
+    pip install selenium pytest pytest-html pytest-metadata
   displayName: Install dependencies
 
 - script: |
@@ -16,31 +25,102 @@ steps:
 
 - script: |
     cat > test_google.py << 'EOF'
+    import pytest
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
+    import os
+    from datetime import datetime
     
-    def test_google():
+    @pytest.fixture
+    def driver(request):
+        """Setup and teardown for Chrome WebDriver"""
         chrome_options = Options()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--window-size=1920,1080')
         
         service = Service('/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.implicitly_wait(10)
         
-        driver.get('https://www.google.com')
-        assert 'Google' in driver.title
+        yield driver
+        
+        # Capture screenshot on failure
+        if request.node.rep_call.failed:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            screenshot_name = f"screenshot_{request.node.name}_{timestamp}.png"
+            driver.save_screenshot(screenshot_name)
+            print(f"Screenshot saved: {screenshot_name}")
+        
         driver.quit()
+    
+    @pytest.hookimpl(tryfirst=True, hookwrapper=True)
+    def pytest_runtest_makereport(item, call):
+        """Hook to capture test results for screenshot on failure"""
+        outcome = yield
+        rep = outcome.get_result()
+        setattr(item, "rep_" + rep.when, rep)
+    
+    @pytest.mark.smoke
+    @pytest.mark.priority_high
+    def test_google_homepage_title(driver):
+        """Verify Google homepage title contains 'Google'"""
+        driver.get('https://www.google.com')
+        assert 'Google' in driver.title, f"Expected 'Google' in title, but got: {driver.title}"
+        print(f"✓ Page title verified: {driver.title}")
+    
+    @pytest.mark.smoke
+    @pytest.mark.priority_medium
+    def test_google_homepage_loaded(driver):
+        """Verify Google homepage loads successfully"""
+        driver.get('https://www.google.com')
+        assert driver.current_url.startswith('https://www.google'), "Google homepage did not load"
+        print(f"✓ Page loaded successfully: {driver.current_url}")
     EOF
-  displayName: Create test
+  displayName: Create enhanced test suite
 
 - script: |
-    pytest test_google.py --junitxml=results.xml
-  displayName: Run test
+    pytest test_google.py \
+      --junitxml=results.xml \
+      --html=test-report.html \
+      --self-contained-html \
+      -v \
+      --tb=short \
+      --maxfail=3
+  displayName: 'Run Selenium Tests'
+  continueOnError: true
 
 - task: PublishTestResults@2
   inputs:
-    testResultsFiles: results.xml
-    testRunTitle: Basic Google Test
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/results.xml'
+    testRunTitle: '$(testRunTitle)'
+    failTaskOnFailedTests: true
+    publishRunAttachments: true
+    mergeTestResults: true
+  displayName: 'Publish Test Results to Azure Test Plans'
+  condition: succeededOrFailed()
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: 'test-report.html'
+    ArtifactName: 'test-html-report'
+    publishLocation: 'Container'
+  displayName: 'Publish HTML Test Report'
+  condition: succeededOrFailed()
+
+- script: |
+    echo "========================================"
+    echo "Test Execution Summary"
+    echo "========================================"
+    echo "Build Number: $(Build.BuildNumber)"
+    echo "Build ID: $(Build.BuildId)"
+    echo "Source Branch: $(Build.SourceBranchName)"
+    echo "Test Results: Check Azure Test Plans"
+    echo "Test Run URL: https://dev.azure.com/$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_TestManagement/Runs"
+    echo "========================================"
+  displayName: 'Display Test Summary'
+  condition: always()
