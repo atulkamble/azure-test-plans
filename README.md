@@ -80,7 +80,11 @@ Azure Test Plans is a **test management service inside Azure DevOps** that helps
 git clone https://github.com/atulkamble/Azure-Test-Plans.git
 cd Azure-Test-Plans
 
+python3 -m venv venv
+source venv/bin/activate
+
 # Install dependencies
+pip install --upgrade pip
 pip install selenium pytest pytest-html pytest-metadata
 
 # Install ChromeDriver (macOS)
