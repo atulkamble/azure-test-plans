@@ -80,10 +80,12 @@ pip show selenium
 google-chrome --version
 ```
 ```bash
+cd Downloads 
 # Clone the repository
 
-git clone https://github.com/atulkamble/Azure-Test-Plans.git
-cd Azure-Test-Plans
+git clone https://github.com/atulkamble/azure-test-plans.git
+cd azure-test-plans
+code .
 
 python3 -m venv venv
 source venv/bin/activate
@@ -97,6 +99,10 @@ brew install chromedriver
 
 # Run tests locally
 pytest test_google.py -v --html=report.html --self-contained-html
+
+open report.html
+
+pip freeze > requirements.txt
 ```
 
 ---
